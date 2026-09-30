@@ -1,4 +1,5 @@
-# Backs up the Actual data folder to a zip in backupDir (settings.json), keeping the newest keepBackups.
+# Backs up the Actual data folder to a zip in backupDir (settings.json), plus a copy in extraBackupDir if set.
+# Keeps everything from the last keepDays days and never fewer than the newest keepBackups.
 # Safe while the server is running: SQLite files are copied with SQLite's online backup API
 # (a consistent snapshot) and integrity-checked; other files are copied and verified unchanged.
 #   .\backup.ps1                       manual backup
@@ -18,6 +19,26 @@ $name     = "actual-data_${stamp}_$Reason.zip"
 $stage    = Join-Path $env:TEMP "actual-backup-$stamp-$PID"
 
 function BLog([string]$m) { Write-Log 'backup.log' $m }
+
+# Keeps every backup from the last keepDays days AND at least the newest keepBackups,
+# deletes the rest, and clears leftovers of interrupted backups. Returns how many were deleted.
+function Remove-OldBackups([string]$dir) {
+    $keepDays = [int]$settings.keepDays
+    $cutoff = (Get-Date).AddDays(-$keepDays)
+    $all = @(Get-ChildItem $dir -Filter 'actual-data_*.zip' -File | Sort-Object Name -Descending)
+    $old = @()
+    for ($i = $keep; $i -lt $all.Count; $i++) {
+        $when = $all[$i].LastWriteTime
+        if ($all[$i].Name -match '^actual-data_(\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2})') {
+            $when = [datetime]::ParseExact($Matches[1], 'yyyy-MM-dd_HH-mm-ss', $null)
+        }
+        if ($keepDays -le 0 -or $when -lt $cutoff) { $old += $all[$i] }
+    }
+    $old | Remove-Item -Force
+    Get-ChildItem $dir -Filter '.partial-actual-data_*.zip' -File -Force |
+        Where-Object { $_.LastWriteTime -lt (Get-Date).AddHours(-1) } | Remove-Item -Force
+    $old.Count
+}
 
 try {
     if (-not (Test-Path $dataDir)) { throw "Data folder not found: $dataDir" }
@@ -43,7 +64,7 @@ try {
         $pairs = @($sqlite | ForEach-Object { @{ src = $_.FullName; dst = (Join-Path $stage (RelPath $_)) } })
         $pairsFile = Join-Path $stage '_pairs.json'
         [IO.File]::WriteAllText($pairsFile, (ConvertTo-Json -InputObject $pairs -Depth 3))
-        $out = & $node (Join-Path $Root 'sqlite-backup.cjs') $pairsFile 2>&1
+        $out = Invoke-Native $node @((Join-Path $Root 'sqlite-backup.cjs'), $pairsFile)
         $nodeExit = $LASTEXITCODE
         Remove-Item $pairsFile -Force
         if ($nodeExit -ne 0) { throw "SQLite backup failed: $out" }
@@ -79,10 +100,19 @@ try {
     if (Test-Path $tmp) { Remove-Item $tmp -Force }
     [IO.Compression.ZipFile]::CreateFromDirectory($stage, $tmp, [IO.Compression.CompressionLevel]::Optimal, $false)
     Move-Item $tmp (Join-Path $dest $name)
+    $pruned = Remove-OldBackups $dest
+    BLog "OK $Reason backup: $(Join-Path $dest $name) ($($files.Count) files; pruned $pruned old)"
 
-    $old = @(Get-ChildItem $dest -Filter 'actual-data_*.zip' -File | Sort-Object Name -Descending | Select-Object -Skip $keep)
-    $old | Remove-Item -Force
-    BLog "OK $Reason backup: $(Join-Path $dest $name) ($($files.Count) files; pruned $($old.Count) old)"
+    # Optional second copy on another drive / synced folder, so one dead disk can't take everything.
+    $extra = if ($settings.extraBackupDir) { [Environment]::ExpandEnvironmentVariables($settings.extraBackupDir) } else { $null }
+    if ($extra -and -not $Destination) {
+        try {
+            if (-not (Test-Path $extra)) { New-Item -ItemType Directory -Path $extra -Force | Out-Null }
+            Copy-Item (Join-Path $dest $name) (Join-Path $extra ".partial-$name") -Force
+            Move-Item (Join-Path $extra ".partial-$name") (Join-Path $extra $name) -Force
+            BLog "OK copied to $extra (pruned $(Remove-OldBackups $extra) old)"
+        } catch { BLog "WARNING: copy to extraBackupDir $extra failed: $($_.Exception.Message)" }
+    }
     exit 0
 }
 catch {

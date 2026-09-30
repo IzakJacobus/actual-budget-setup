@@ -1,6 +1,8 @@
 {
   "backupDir": "C:\\actual-server\\backups",
+  "extraBackupDir": "",
   "keepBackups": 30,
+  "keepDays": 30,
   "backupTime": "20:00",
   "logMaxMB": 10,
   "logKeep": 5

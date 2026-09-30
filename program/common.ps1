@@ -39,6 +39,14 @@ function Get-NpmCmd {
     Join-Path (Split-Path $node) 'npm.cmd'
 }
 
+# Runs a native program and returns its output (stdout and stderr) as strings.
+# Needed because in Windows PowerShell 5.1 any stderr line (even a harmless warning) becomes a
+# terminating error while $ErrorActionPreference is 'Stop'. Check $LASTEXITCODE afterwards.
+function Invoke-Native([string]$Exe, [string[]]$Arguments) {
+    $ErrorActionPreference = 'Continue'
+    & $Exe @Arguments 2>&1 | ForEach-Object { "$_" }
+}
+
 function Write-Log([string]$File, [string]$Message) {
     $line = '{0} {1}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $Message
     Add-Content -Path (Join-Path $LogDir $File) -Value $line -Encoding UTF8

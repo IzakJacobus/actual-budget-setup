@@ -51,7 +51,13 @@ GOOD TO KNOW
   While it's off, the phone still works and syncs later.
 - Your budget is kept in       C:\actual-server\data
 - Backups are kept in          C:\actual-server\backups
-  One is made every day and each time the laptop starts. The newest 30 are kept.
+  One is made every day and each time the laptop starts.
+  Backups from the last 30 days are kept (and never fewer than 30).
+- IMPORTANT: those backups are on the same laptop. If the laptop is lost or its
+  disk dies, the backups go with it. To keep a second copy somewhere safe,
+  open  C:\actual-server\settings.json  in Notepad and fill in "extraBackupDir":
+      "extraBackupDir": "C:\\Users\\YOURNAME\\OneDrive\\Actual backups",
+  (use double backslashes). A OneDrive, Google Drive or USB folder works.
 - Encryption is optional (in your budget: Settings, then Encryption).
   If you forget the encryption password, your budget CANNOT be recovered.
 

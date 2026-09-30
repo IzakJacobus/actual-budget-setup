@@ -9,7 +9,9 @@ Use it from your phone anywhere, over HTTPS, through [Tailscale](https://tailsca
 ## What you get
 
 - The server starts automatically and invisibly when you sign in to Windows, and restarts itself if it crashes.
-- Daily backups, plus a backup each time the server starts. The newest 30 are kept.
+- Daily backups, plus a backup each time the server starts.
+  Backups from the last 30 days are kept, and never fewer than 30.
+  An optional `extraBackupDir` keeps a second copy off the laptop, for example on OneDrive or a USB drive.
 - Phone access at home and away via Tailscale HTTPS. Only your own devices can reach it.
 - No router ports, no firewall changes, and nothing is exposed to the public internet.
 - Uninstall removes the autostart but never deletes your data or backups.

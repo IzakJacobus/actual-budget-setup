@@ -9,12 +9,34 @@ param(
     [Parameter(Mandatory = $true)][string]$BackupZip,
     [string]$TargetDir,
     [switch]$Verify,
-    [int]$VerifyPort = 5007
+    [int]$VerifyPort = 5007,
+    [switch]$Force   # restore even if the backup was made by a newer server version than the one installed
 )
 . "$PSScriptRoot\common.ps1"
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 $BackupZip = (Resolve-Path $BackupZip).Path
+
+# A backup from a newer server may contain data this (older) server can't read.
+$installed = try { (Get-Content (Join-Path $Root 'node_modules\@actual-app\sync-server\package.json') -Raw | ConvertFrom-Json).version } catch { $null }
+$fromVersion = $null
+$zipRead = [IO.Compression.ZipFile]::OpenRead($BackupZip)
+try {
+    $entry = $zipRead.Entries | Where-Object FullName -eq '_backup-manifest.json'
+    if ($entry) {
+        $reader = New-Object IO.StreamReader($entry.Open())
+        $fromVersion = ($reader.ReadToEnd() | ConvertFrom-Json).serverVersion
+        $reader.Dispose()
+    }
+} finally { $zipRead.Dispose() }
+function To-Version([string]$v) { try { [version]($v -replace '[^\d.].*$', '') } catch { $null } }
+$vFrom = To-Version $fromVersion; $vNow = To-Version $installed
+if ($vFrom -and $vNow) {
+    Write-Host "Backup made by server $fromVersion; installed server is $installed."
+    if ($vFrom -gt $vNow -and -not $Force) {
+        throw "This backup comes from a NEWER server ($fromVersion) than the installed one ($installed). Run update.ps1 first, or add -Force to restore anyway."
+    }
+}
 $dataDir   = Get-DataDir
 $live      = (-not $TargetDir) -or ([IO.Path]::GetFullPath($TargetDir).TrimEnd('\') -ieq $dataDir.TrimEnd('\'))
 $target    = if ($live) { $dataDir } else { [IO.Path]::GetFullPath($TargetDir) }

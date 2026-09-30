@@ -1,5 +1,5 @@
 #Requires -RunAsAdministrator
-# One-time setup. Easiest: double-click install.cmd. Or, from an elevated PowerShell:
+# One-time setup. Easiest: double-click Install.cmd. Or, from an elevated PowerShell:
 #   powershell -ExecutionPolicy Bypass -File C:\actual-server\install.ps1
 #
 # What it changes (and nothing else):
@@ -20,13 +20,19 @@ $ErrorActionPreference = 'Stop'
 $Home_ = 'C:\actual-server'
 
 # 0. Make sure we run from C:\actual-server (the scripts expect that folder).
+#    The package never contains data, so copying it can't overwrite a budget. On a re-run over an
+#    existing install, your config/settings and the installed server version (package*.json) are kept.
 if ($PSScriptRoot.TrimEnd('\') -ine $Home_) {
-    if (Test-Path "$Home_\data\server-files") {
-        throw "$Home_ already contains an Actual server with data. Not overwriting it."
-    }
-    Write-Host "Copying files to $Home_ ..." -ForegroundColor Cyan
+    $existing = Test-Path "$Home_\install.ps1"
+    Write-Host $(if ($existing) { "Updating scripts in $Home_ (your data and settings are kept) ..." } else { "Copying files to $Home_ ..." }) -ForegroundColor Cyan
     New-Item -ItemType Directory -Path $Home_ -Force | Out-Null
-    Copy-Item "$PSScriptRoot\*" $Home_ -Recurse -Force
+    $keepIfPresent = 'config.json', 'settings.json', 'package.json', 'package-lock.json'
+    foreach ($f in Get-ChildItem $PSScriptRoot -File) {
+        if ($existing -and $keepIfPresent -contains $f.Name -and (Test-Path "$Home_\$($f.Name)")) { continue }
+        Copy-Item $f.FullName $Home_ -Force
+    }
+    $guide = Join-Path (Split-Path $PSScriptRoot) 'READ ME FIRST.txt'
+    if (Test-Path $guide) { Copy-Item $guide $Home_ -Force }
     & "$Home_\install.ps1" @PSBoundParameters
     exit $LASTEXITCODE
 }
@@ -98,7 +104,10 @@ if (Wait-ServerUp -Seconds 90) { Write-Host "Server is up at $(Get-ServerUrl)" -
 else { Write-Warning 'Server did not respond yet; check C:\actual-server\logs\server.log' }
 
 # 6. Tailscale: HTTPS access from your phone, only for your own devices.
-function Get-TsStatus($ts) { try { (& $ts status --json 2>$null) | ConvertFrom-Json } catch { $null } }
+function Get-TsStatus($ts) {
+    $ErrorActionPreference = 'Continue'   # tailscale may write to stderr; see Invoke-Native in common.ps1
+    try { ((& $ts status --json 2>$null) -join "`n") | ConvertFrom-Json } catch { $null }
+}
 $phoneUrl = $null
 $ts = Get-TailscaleExe
 if (-not $SkipTailscale -and -not $ts) {
@@ -110,7 +119,7 @@ if (-not $SkipTailscale -and -not $ts) {
     }
 }
 if ($SkipTailscale) { }
-elseif (-not $ts) { Write-Host 'Skipping phone access: Tailscale not installed. Re-run install.cmd later.' -ForegroundColor Yellow }
+elseif (-not $ts) { Write-Host 'Skipping phone access: Tailscale not installed. Run Install.cmd again later.' -ForegroundColor Yellow }
 else {
     $st = Get-TsStatus $ts
     while (-not $st -or $st.BackendState -ne 'Running') {
@@ -137,11 +146,11 @@ else {
         Set-Content (Join-Path $Root 'PHONE-URL.txt') "Open this on your phone (with the Tailscale app on):`r`n$phoneUrl" -Encoding UTF8
         Write-Host "Phone URL: $phoneUrl  (also saved in C:\actual-server\PHONE-URL.txt)" -ForegroundColor Green
     } else {
-        Write-Host 'Phone access not set up yet. Finish the Tailscale steps and run install.cmd again.' -ForegroundColor Yellow
+        Write-Host 'Phone access not set up yet. Finish the Tailscale steps and run Install.cmd again.' -ForegroundColor Yellow
     }
 }
 
 Write-Host ''
 $boot = try { (Invoke-RestMethod "$(Get-ServerUrl)/account/needs-bootstrap" -TimeoutSec 5).data.bootstrapped } catch { $null }
-if ($boot -eq $false) { Write-Host 'Done. Next: open http://localhost:5006 and create your server password (see SETUP.md).' -ForegroundColor Green }
-else { Write-Host 'Done. Open http://localhost:5006 and log in (see SETUP.md).' -ForegroundColor Green }
+if ($boot -eq $false) { Write-Host 'Done. Next: open http://localhost:5006 and create your server password (see READ ME FIRST.txt).' -ForegroundColor Green }
+else { Write-Host 'Done. Open http://localhost:5006 and log in (see READ ME FIRST.txt).' -ForegroundColor Green }

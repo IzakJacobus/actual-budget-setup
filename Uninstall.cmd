@@ -8,6 +8,6 @@ echo  Your budget data (C:\actual-server\data) and backups are KEPT.
 echo.
 choice /C YN /M " Uninstall now"
 if errorlevel 2 exit /b
-set "S=C:\actual-server\uninstall.ps1"
-if not exist "%S%" set "S=%~dp0program\uninstall.ps1"
-powershell -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList '-NoProfile -NoExit -ExecutionPolicy Bypass -File \"%S%\" -RemoveTailscaleServe'"
+set "ACTUAL_SETUP_PS1=C:\actual-server\uninstall.ps1"
+if not exist "%ACTUAL_SETUP_PS1%" set "ACTUAL_SETUP_PS1=%~dp0program\uninstall.ps1"
+powershell -NoProfile -Command "Start-Process powershell -Verb RunAs -ArgumentList ('-NoProfile -NoExit -ExecutionPolicy Bypass -File \"' + $env:ACTUAL_SETUP_PS1 + '\" -RemoveTailscaleServe')"
