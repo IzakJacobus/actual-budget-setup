@@ -1,0 +1,65 @@
+ACTUAL BUDGET - QUICK GUIDE
+===========================
+
+Your own private budget app, on your laptop and your phone.
+It starts by itself, backs itself up every day, and only YOUR devices can reach it.
+
+You need: a Windows 11 laptop, a phone, and about 15 minutes.
+
+
+INSTALL (on the laptop)
+-----------------------
+1. Double-click  Install.cmd  and click Yes when Windows asks.
+
+2. Type  y  and press Enter when it offers to install Node.js and Tailscale.
+
+3. Sign in to Tailscale when asked:
+   - Click the Tailscale icon near the clock (you may need the ^ arrow first).
+   - Choose "Log in" and make a free account.
+
+4. Turn on HTTPS when asked:
+   - Open  https://login.tailscale.com/admin/dns
+   - Click "Enable HTTPS".
+   - Go back to the window and press Enter.
+
+5. Write down the phone address it shows at the end.
+   It is also saved in  C:\actual-server\PHONE-URL.txt
+
+
+FIRST USE
+---------
+1. On the laptop, open  http://localhost:5006  in your browser.
+2. Create your password. Choose it yourself and write it down.
+3. Click "Create new file" to start a budget.
+   Or, to bring in an existing budget, use "Import file" and then "Actual".
+
+
+ON YOUR PHONE
+-------------
+1. Install the Tailscale app. Sign in with the SAME account and switch it on.
+2. Open your phone address:
+   - iPhone: in Safari
+   - Android: in Chrome
+3. Add it to your home screen so it works like an app:
+   - iPhone: tap Share, then "Add to Home Screen"
+   - Android: tap the three dots, then "Install app"
+
+
+GOOD TO KNOW
+------------
+- The laptop must be on and signed in for the phone to sync.
+  While it's off, the phone still works and syncs later.
+- Your budget is kept in       C:\actual-server\data
+- Backups are kept in          C:\actual-server\backups
+  One is made every day and each time the laptop starts. The newest 30 are kept.
+- Encryption is optional (in your budget: Settings, then Encryption).
+  If you forget the encryption password, your budget CANNOT be recovered.
+
+
+UNINSTALL
+---------
+Double-click  Uninstall.cmd  and press Y.
+This stops the app, removes its automatic start and backups, and turns off phone access.
+Your budget data and backups are NOT deleted.
+To remove everything, delete the folder  C:\actual-server  afterwards,
+but only once you are sure you no longer need your budget.

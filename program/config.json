@@ -1,0 +1,8 @@
+{
+  "dataDir": "C:/actual-server/data",
+  "serverFiles": "C:/actual-server/data/server-files",
+  "userFiles": "C:/actual-server/data/user-files",
+  "hostname": "127.0.0.1",
+  "port": 5006,
+  "trustedProxies": ["127.0.0.1/32", "::1/128"]
+}

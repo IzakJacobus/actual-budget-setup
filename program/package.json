@@ -1,0 +1,8 @@
+{
+  "name": "actual-server-local",
+  "private": true,
+  "description": "Local install of the Actual Budget sync server. Version is pinned; use update.ps1 to change it.",
+  "dependencies": {
+    "@actual-app/sync-server": "26.9.0"
+  }
+}
